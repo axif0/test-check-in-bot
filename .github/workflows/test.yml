@@ -1,0 +1,28 @@
+name: Test Check-in Bot
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+          
+      - name: Install dependencies
+        run: yarn install
+        
+      - name: Build
+        run: yarn build
+        
+      - name: Test Check-in Bot
+        uses: ./
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-inactive: '14'
+          check-in-message: |
+            Hello! Just checking in since there hasn't been any activity here for a while.
+            Let me know if you need any help! 👋
