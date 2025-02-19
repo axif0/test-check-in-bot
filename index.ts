@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { Octokit } from "@octokit/rest";
-import { Issue } from "@octokit/types";
+import { IssuesListForRepoResponseData } from '@octokit/types';
 
 async function run() {
   try {
@@ -21,7 +21,7 @@ async function run() {
       per_page: 100,
     });
 
-    const inactiveIssuesAndPRs = issuesAndPRs.data.filter((issue: Issue) => {
+    const inactiveIssuesAndPRs = issuesAndPRs.data.filter((issue: IssuesListForRepoResponseData) => {
       const lastUpdate = new Date(issue.updated_at);
       const daysDiff =
         (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
