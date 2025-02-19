@@ -15,6 +15,5 @@
     "@octokit/types": "13.8.0",
     "@vercel/ncc": "0.38.3",
     "typescript": "5.7.3"
-  },
-  "packageManager": "yarn@4.6.0"
+  }
 }
