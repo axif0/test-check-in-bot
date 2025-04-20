@@ -9,5 +9,5 @@
     "lib": ["es2018", "dom"],
     "types": ["node"]
   },
-  "include": [".github/actions/check-in-bot/index.ts"]
+  "include": ["index.ts"]
 }
