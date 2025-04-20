@@ -7,6 +7,7 @@ async function run() {
     // Get inputs
     const token = core.getInput("repo-token");
     const daysInactive = parseInt(core.getInput("days-inactive"), 10);
+    const checkInMessage = core.getInput("check-in-message");
     const commentMessage = core.getInput("comment-message");
     const botUsername = core.getInput("bot-username");
     const ignoreLabel = core.getInput("ignore-label") || "ignore-checkin";
@@ -58,14 +59,20 @@ async function run() {
          (now.getTime() - lastBotActivity.getTime()) / (1000 * 60 * 60 * 24) >= daysInactive);
 
       if (shouldComment) {
+        // Replace placeholders in commentMessage
+        let finalMessage = commentMessage
+          .replace(/\{\{\s*check-in-message\s*\}\}/g, checkInMessage)
+          .replace(/\{\{\s*days-inactive\s*\}\}/g, daysInactive.toString());
+
         // Log decision to post comment
         core.info(`Posting comment on issue/PR #${item.number}: daysSinceLastUser=${daysSinceLastUser.toFixed(2)}, lastBotActivity=${lastBotActivity ? lastBotActivity.toISOString() : 'null'}`);
+        core.info(`Comment content: ${finalMessage}`);
         // Post the comment
         await octokit.issues.createComment({
           owner,
           repo,
           issue_number: item.number,
-          body: commentMessage,
+          body: finalMessage,
         });
       } else {
         core.info(`Skipping comment on issue/PR #${item.number}: daysSinceLastUser=${daysSinceLastUser.toFixed(2)}, lastBotActivity=${lastBotActivity ? lastBotActivity.toISOString() : 'null'}`);
@@ -81,3 +88,4 @@ async function run() {
 }
 
 run();
+ 
