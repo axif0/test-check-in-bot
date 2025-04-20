@@ -59,35 +59,11 @@ async function run() {
          (now.getTime() - lastBotActivity.getTime()) / (1000 * 60 * 60 * 24) >= daysInactive);
 
       if (shouldComment) {
-        // Replace placeholders in commentMessage with improved debugging
-        core.info(`Before replacement - commentMessage: "${commentMessage}"`);
-        core.info(`Before replacement - checkInMessage: "${checkInMessage}"`);
+        // Use the provided messages directly without trying to do template replacement
+        const finalMessage = commentMessage;
         
-        // First, normalize the strings to handle potential whitespace or invisible characters
-        const normalizedComment = commentMessage.trim();
+        core.info(`Using comment message directly: ${finalMessage}`);
         
-        // More specific replacement with exact matching for common patterns
-        let finalMessage = normalizedComment
-          .replace('{{ check-in-message }}', checkInMessage)
-          .replace('{{check-in-message}}', checkInMessage)
-          .replace('{{check_in_message}}', checkInMessage)
-          .replace('{{ days-inactive }}', daysInactive.toString())
-          .replace('{{days-inactive}}', daysInactive.toString())
-          .replace('{{days_inactive}}', daysInactive.toString());
-        
-        // If the first attempt didn't work, try with regex as a fallback
-        if (finalMessage.includes('{{ check-in-message }}') || 
-            finalMessage.includes('{{check-in-message}}')) {
-          finalMessage = normalizedComment
-            .replace(/\{\{\s*check-in-message\s*\}\}/gi, checkInMessage)
-            .replace(/\{\{\s*days-inactive\s*\}\}/gi, daysInactive.toString());
-        }
-        
-        // Add detailed logging
-        core.info(`After replacement - finalMessage: "${finalMessage}"`);
-        
-        // Log decision to post comment
-        core.info(`Posting comment on issue/PR #${item.number}: daysSinceLastUser=${daysSinceLastUser.toFixed(2)}, lastBotActivity=${lastBotActivity ? lastBotActivity.toISOString() : 'null'}`);
         // Post the comment
         await octokit.issues.createComment({
           owner,
