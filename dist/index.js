@@ -98,7 +98,8 @@ function run() {
     try {
       // Get inputs
       const token = core.getInput("repo-token");
-      const daysInactive = parseInt(core.getInput("days-inactive"), 10);
+      // const daysInactive = parseInt(core.getInput("days-inactive"), 10);
+      const daysInactive = parseFloat(core.getInput("days-inactive"));
       const commentMessage = core.getInput("comment-message");
       const botUsername = core.getInput("bot-username");
       const ignoreLabel = core.getInput("ignore-label") || "ignore-checkin";
