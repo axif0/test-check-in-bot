@@ -51,7 +51,8 @@ async function run() {
       // Check if a comment should be posted
       const shouldComment =
         daysSinceLastUser >= daysInactive &&
-        (lastBotActivity === null || lastBotActivity < lastUserActivity);
+        (lastBotActivity === null || 
+         (now.getTime() - lastBotActivity.getTime()) / (1000 * 60 * 60 * 24) >= daysInactive);
 
       if (shouldComment) {
         // Post the comment
