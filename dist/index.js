@@ -92,34 +92,68 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(require("@actions/core"));
 const github = __importStar(require("@actions/github"));
 const rest_1 = require("@octokit/rest");
+
 function run() {
   return __awaiter(this, void 0, void 0, function* () {
     try {
+      // Get inputs
       const token = core.getInput("repo-token");
       const daysInactive = parseInt(core.getInput("days-inactive"), 10);
       const commentMessage = core.getInput("comment-message");
+      const botUsername = core.getInput("bot-username");
+      const ignoreLabel = core.getInput("ignore-label") || "ignore-checkin";
+
+      // Set up Octokit
       const octokit = new rest_1.Octokit({ auth: token });
       const { owner, repo } = github.context.repo;
-      const now = new Date();
-      const issuesAndPRs = yield octokit.issues.listForRepo({
-        owner,
-        repo,
-        state: "open",
+
+      // Search for open issues and PRs without the ignore label
+      const query = `repo:${owner}/${repo} is:open -label:${ignoreLabel}`;
+      const items = yield octokit.paginate(octokit.search.issuesAndPullRequests, {
+        q: query,
         per_page: 100,
       });
-      const inactiveIssuesAndPRs = issuesAndPRs.data.filter((issue) => {
-        const lastUpdate = new Date(issue.updated_at);
-        const daysDiff =
-          (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
-        return daysDiff >= daysInactive;
-      });
-      for (const issue of inactiveIssuesAndPRs) {
-        yield octokit.issues.createComment({
+
+      const now = new Date();
+
+      for (const item of items) {
+        // Fetch all comments for the issue or PR
+        const comments = yield octokit.paginate(octokit.issues.listComments, {
           owner,
           repo,
-          issue_number: issue.number,
-          body: commentMessage,
+          issue_number: item.number,
+          per_page: 100,
         });
+
+        // Find last user activity (most recent non-bot comment or issue creation)
+        const userComments = comments.filter((c) => c.user.login !== botUsername);
+        let lastUserActivity = userComments.length > 0
+          ? new Date(Math.max(...userComments.map((c) => new Date(c.created_at).getTime())))
+          : new Date(item.created_at);
+
+        // Find last bot activity (most recent bot comment, if any)
+        const botComments = comments.filter((c) => c.user.login === botUsername);
+        const lastBotActivity = botComments.length > 0
+          ? new Date(Math.max(...botComments.map((c) => new Date(c.created_at).getTime())))
+          : null;
+
+        // Calculate days since last user activity
+        const daysSinceLastUser = (now.getTime() - lastUserActivity.getTime()) / (1000 * 60 * 60 * 24);
+
+        // Check if a comment should be posted
+        const shouldComment =
+          daysSinceLastUser >= daysInactive &&
+          (lastBotActivity === null || lastBotActivity < lastUserActivity);
+
+        if (shouldComment) {
+          // Post the comment
+          yield octokit.issues.createComment({
+            owner,
+            repo,
+            issue_number: item.number,
+            body: commentMessage,
+          });
+        }
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -130,4 +164,5 @@ function run() {
     }
   });
 }
+
 run();
