@@ -61,12 +61,16 @@ async function run() {
       if (shouldComment) {
         // Replace placeholders in commentMessage
         let finalMessage = commentMessage
-          .replace(/\{\{\s*check-in-message\s*\}\}/g, checkInMessage)
-          .replace(/\{\{\s*days-inactive\s*\}\}/g, daysInactive.toString());
+          .replace(/\{\{\s*check-in-message\s*\}\}/gi, checkInMessage)
+          .replace(/\{\{\s*days-inactive\s*\}\}/gi, daysInactive.toString());
 
+        // Add additional debugging to help troubleshoot
+        core.info(`Original comment template: ${commentMessage}`);
+        core.info(`Check-in message value: ${checkInMessage}`);
+        core.info(`Final message after replacement: ${finalMessage}`);
+        
         // Log decision to post comment
         core.info(`Posting comment on issue/PR #${item.number}: daysSinceLastUser=${daysSinceLastUser.toFixed(2)}, lastBotActivity=${lastBotActivity ? lastBotActivity.toISOString() : 'null'}`);
-        core.info(`Comment content: ${finalMessage}`);
         // Post the comment
         await octokit.issues.createComment({
           owner,
