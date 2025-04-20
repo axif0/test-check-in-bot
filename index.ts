@@ -5,11 +5,11 @@ import { Octokit } from "@octokit/rest";
 async function run() {
   try {
     // Get inputs
-    const token: string = core.getInput("repo-token");
-    const daysInactive: number = parseInt(core.getInput("days-inactive"), 10);
-    const commentMessage: string = core.getInput("comment-message");
-    const botUsername: string = core.getInput("bot-username");
-    const ignoreLabel: string = core.getInput("ignore-label") || "ignore-checkin";
+    const token = core.getInput("repo-token");
+    const daysInactive = parseInt(core.getInput("days-inactive"), 10);
+    const commentMessage = core.getInput("comment-message");
+    const botUsername = core.getInput("bot-username");
+    const ignoreLabel = core.getInput("ignore-label") || "ignore-checkin";
 
     // Set up Octokit
     const octokit = new Octokit({ auth: token });
@@ -33,6 +33,9 @@ async function run() {
         per_page: 100,
       });
 
+      // Log all comment authors for debugging
+      core.info(`Issue/PR #${item.number} comment authors: ${comments.map(c => c.user?.login).join(", ")}`);
+
       // Find last user activity (most recent non-bot comment or issue creation)
       const userComments = comments.filter((c) => c.user?.login !== botUsername);
       let lastUserActivity = userComments.length > 0
@@ -55,6 +58,8 @@ async function run() {
          (now.getTime() - lastBotActivity.getTime()) / (1000 * 60 * 60 * 24) >= daysInactive);
 
       if (shouldComment) {
+        // Log decision to post comment
+        core.info(`Posting comment on issue/PR #${item.number}: daysSinceLastUser=${daysSinceLastUser.toFixed(2)}, lastBotActivity=${lastBotActivity ? lastBotActivity.toISOString() : 'null'}`);
         // Post the comment
         await octokit.issues.createComment({
           owner,
@@ -62,6 +67,8 @@ async function run() {
           issue_number: item.number,
           body: commentMessage,
         });
+      } else {
+        core.info(`Skipping comment on issue/PR #${item.number}: daysSinceLastUser=${daysSinceLastUser.toFixed(2)}, lastBotActivity=${lastBotActivity ? lastBotActivity.toISOString() : 'null'}`);
       }
     }
   } catch (error) {
