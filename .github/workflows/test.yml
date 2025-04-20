@@ -18,7 +18,7 @@ jobs:
         run: yarn build
         
       - name: Test Check-in Bot
-        uses: ./
+        uses: ./.github/actions/check-in-bot
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           days-inactive: '14'

@@ -2,12 +2,12 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es2018",
-    "outDir": "./dist",
+    "outDir": ".github/actions/check-in-bot/dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "lib": ["es2018", "dom"],
     "types": ["node"]
   },
-  "include": ["index.ts"]
+  "include": [".github/actions/check-in-bot/index.ts"]
 }
