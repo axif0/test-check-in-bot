@@ -19,6 +19,15 @@ inputs:
     description: 'Label to ignore issues with'
     required: false
     default: 'ignore-checkin'
+  check-in-message:
+    description: 'The check in message for issues and PRs (supports markdown)'
+    required: true
+    default: |
+      Hello to the maintainers and watchers!
+
+      There have been no updates here for the last two weeks. There might be need for a check in :)
+
+      Thanks and hope all are well! ❤️
 runs:
   using: 'node20'
   main: 'dist/index.js'
