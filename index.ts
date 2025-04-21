@@ -59,37 +59,49 @@ async function run() {
          (now.getTime() - lastBotActivity.getTime()) / (1000 * 60 * 60 * 24) >= daysInactive);
 
       if (shouldComment) {
-        // Process template variables in comment message
-        let finalMessage = commentMessage;
-        
         // Debug logging
         core.info(`Original comment message: "${commentMessage}"`);
         core.info(`Check-in message value: "${checkInMessage}"`);
         core.info(`Days inactive value: ${daysInactive}`);
         
-        // Function to replace template variables with better logging
-        const replaceTemplateVar = (text: string, varName: string, value: string): string => {
-          const regex = new RegExp(`\\{\\{\\s*${varName}\\s*\\}\\}`, 'g');
-          const matches = text.match(regex);
-          const count = matches ? matches.length : 0;
-          core.info(`Looking for template variable "${varName}" - found ${count} matches`);
-          
-          return text.replace(regex, value);
-        };
+        // First, clean up the input by removing any artifacts from workflow variable interpolation
+        let finalMessage = commentMessage;
         
-        // Replace template variables with the new function
-        finalMessage = replaceTemplateVar(finalMessage, 'days-inactive', daysInactive.toString());
-        finalMessage = replaceTemplateVar(finalMessage, 'inputs\\.check-in-message', checkInMessage);
-        finalMessage = replaceTemplateVar(finalMessage, 'check-in-message', checkInMessage);
+        // Simple direct string replacement - sometimes more reliable than regex
+        const checkInVar = "{{ check-in-message }}";
+        const daysInactiveVar = "{{ days-inactive }}";
         
-        // Add a fallback for any remaining template vars
-        const remainingTemplates = finalMessage.match(/\{\{[^}]+\}\}/g);
+        if (finalMessage.includes(checkInVar)) {
+          core.info(`Found check-in-message template variable using direct string match`);
+          finalMessage = finalMessage.split(checkInVar).join(checkInMessage);
+        } else {
+          core.info(`No exact match for "${checkInVar}" found`);
+        }
+        
+        if (finalMessage.includes(daysInactiveVar)) {
+          core.info(`Found days-inactive template variable using direct string match`);
+          finalMessage = finalMessage.split(daysInactiveVar).join(daysInactive.toString());
+        } else {
+          core.info(`No exact match for "${daysInactiveVar}" found`);
+        }
+        
+        // Dump the comment message character by character for debugging
+        core.info(`Comment message character codes: ${[...commentMessage].map(c => c.charCodeAt(0)).join(',')}`);
+        
+        // Check for any remaining template variables
+        const remainingTemplates = finalMessage.match(/\{\{.*?\}\}/g);
         if (remainingTemplates) {
           core.info(`WARNING: Found unprocessed template variables: ${remainingTemplates.join(', ')}`);
           
-          // Dump the exact characters for debugging
+          // As a last resort, try to handle any other template variables
           for (const template of remainingTemplates) {
-            core.info(`Unprocessed template: ${[...template].map(c => c.charCodeAt(0)).join(',')}`);
+            core.info(`Trying to process: ${template}`);
+            
+            if (template.includes('check-in-message')) {
+              finalMessage = finalMessage.replace(template, checkInMessage);
+            } else if (template.includes('days-inactive')) {
+              finalMessage = finalMessage.replace(template, daysInactive.toString());
+            }
           }
         }
         
