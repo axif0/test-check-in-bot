@@ -60,11 +60,15 @@ async function run() {
 
       if (shouldComment) {
         // Process template variables in comment message
-        let finalMessage = commentMessage
-          .replace(/\{\{\s*days-inactive\s*\}\}/g, daysInactive.toString())
-          .replace(/\$\{\{\s*inputs\.check-in-message\s*\}\}/g, checkInMessage);
+        let finalMessage = commentMessage;
         
-        core.info(`Processed message with substitutions: ${finalMessage}`);
+        // Replace template variables
+        finalMessage = finalMessage
+          .replace(/\{\{\s*days-inactive\s*\}\}/g, daysInactive.toString())
+          .replace(/\{\{\s*inputs\.days-inactive\s*\}\}/g, daysInactive.toString())
+          .replace(/\{\{\s*inputs\.check-in-message\s*\}\}/g, checkInMessage);
+        
+        core.info(`Processed comment message: ${finalMessage}`);
         
         // Post the comment
         await octokit.issues.createComment({
