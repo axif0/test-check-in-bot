@@ -65,8 +65,8 @@ async function run() {
         // Replace template variables
         finalMessage = finalMessage
           .replace(/\{\{\s*days-inactive\s*\}\}/g, daysInactive.toString())
-          .replace(/\{\{\s*inputs\.days-inactive\s*\}\}/g, daysInactive.toString())
-          .replace(/\{\{\s*inputs\.check-in-message\s*\}\}/g, checkInMessage);
+          .replace(/\{\{\s*inputs\.check-in-message\s*\}\}/g, checkInMessage)
+          .replace(/\{\{\s*check-in-message\s*\}\}/g, checkInMessage);
         
         core.info(`Processed comment message: ${finalMessage}`);
         

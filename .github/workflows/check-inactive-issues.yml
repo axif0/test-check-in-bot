@@ -21,7 +21,7 @@ jobs:
             Thanks and hope all are well! ❤️
           comment-message: |
             <!-- AUTO-GENERATED CHECK-IN -->
-            {{ inputs.check-in-message }}
+            {{ check-in-message }}
             
             Additionally, this issue has been inactive for {{ days-inactive }} days.
           bot-username: 'github-actions[bot]'
