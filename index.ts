@@ -62,13 +62,35 @@ async function run() {
         // Process template variables in comment message
         let finalMessage = commentMessage;
         
+        // Debug logging
+        core.info(`Original comment message: "${commentMessage}"`);
+        core.info(`Check-in message value: "${checkInMessage}"`);
+        core.info(`Days inactive value: ${daysInactive}`);
+        
         // Replace template variables
         finalMessage = finalMessage
-          .replace(/\{\{\s*days-inactive\s*\}\}/g, daysInactive.toString())
-          .replace(/\{\{\s*inputs\.check-in-message\s*\}\}/g, checkInMessage)
+          .replace(/\{\{\s*days-inactive\s*\}\}/g, daysInactive.toString());
+        
+        core.info(`After days-inactive replacement: "${finalMessage}"`);
+        
+        finalMessage = finalMessage
+          .replace(/\{\{\s*inputs\.check-in-message\s*\}\}/g, checkInMessage);
+        
+        core.info(`After inputs.check-in-message replacement: "${finalMessage}"`);
+        
+        finalMessage = finalMessage
           .replace(/\{\{\s*check-in-message\s*\}\}/g, checkInMessage);
         
-        core.info(`Processed comment message: ${finalMessage}`);
+        core.info(`After check-in-message replacement: "${finalMessage}"`);
+        
+        // Add more specific matching for template variables
+        // Try another approach - look for any remaining template variables
+        const remainingTemplates = finalMessage.match(/\{\{\s*[^}]+\s*\}\}/g);
+        if (remainingTemplates) {
+          core.info(`WARNING: Found unprocessed template variables: ${remainingTemplates.join(', ')}`);
+        }
+        
+        core.info(`Final processed comment message: "${finalMessage}"`);
         
         // Post the comment
         await octokit.issues.createComment({
