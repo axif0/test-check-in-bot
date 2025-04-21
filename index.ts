@@ -67,27 +67,30 @@ async function run() {
         core.info(`Check-in message value: "${checkInMessage}"`);
         core.info(`Days inactive value: ${daysInactive}`);
         
-        // Replace template variables
-        finalMessage = finalMessage
-          .replace(/\{\{\s*days-inactive\s*\}\}/g, daysInactive.toString());
+        // Function to replace template variables with better logging
+        const replaceTemplateVar = (text: string, varName: string, value: string): string => {
+          const regex = new RegExp(`\\{\\{\\s*${varName}\\s*\\}\\}`, 'g');
+          const matches = text.match(regex);
+          const count = matches ? matches.length : 0;
+          core.info(`Looking for template variable "${varName}" - found ${count} matches`);
+          
+          return text.replace(regex, value);
+        };
         
-        core.info(`After days-inactive replacement: "${finalMessage}"`);
+        // Replace template variables with the new function
+        finalMessage = replaceTemplateVar(finalMessage, 'days-inactive', daysInactive.toString());
+        finalMessage = replaceTemplateVar(finalMessage, 'inputs\\.check-in-message', checkInMessage);
+        finalMessage = replaceTemplateVar(finalMessage, 'check-in-message', checkInMessage);
         
-        finalMessage = finalMessage
-          .replace(/\{\{\s*inputs\.check-in-message\s*\}\}/g, checkInMessage);
-        
-        core.info(`After inputs.check-in-message replacement: "${finalMessage}"`);
-        
-        finalMessage = finalMessage
-          .replace(/\{\{\s*check-in-message\s*\}\}/g, checkInMessage);
-        
-        core.info(`After check-in-message replacement: "${finalMessage}"`);
-        
-        // Add more specific matching for template variables
-        // Try another approach - look for any remaining template variables
-        const remainingTemplates = finalMessage.match(/\{\{\s*[^}]+\s*\}\}/g);
+        // Add a fallback for any remaining template vars
+        const remainingTemplates = finalMessage.match(/\{\{[^}]+\}\}/g);
         if (remainingTemplates) {
           core.info(`WARNING: Found unprocessed template variables: ${remainingTemplates.join(', ')}`);
+          
+          // Dump the exact characters for debugging
+          for (const template of remainingTemplates) {
+            core.info(`Unprocessed template: ${[...template].map(c => c.charCodeAt(0)).join(',')}`);
+          }
         }
         
         core.info(`Final processed comment message: "${finalMessage}"`);
