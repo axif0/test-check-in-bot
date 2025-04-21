@@ -47,10 +47,20 @@ async function run() {
     try {
         // Get inputs
         const token = core.getInput("repo-token");
-        const daysInactive = parseInt(core.getInput("days-inactive"), 10);
+        const daysInactive = parseFloat(core.getInput("days-inactive"));
+        const checkInMessage = core.getInput("check-in-message");
         const commentMessage = core.getInput("comment-message");
         const botUsername = core.getInput("bot-username");
         const ignoreLabel = core.getInput("ignore-label") || "ignore-checkin";
+        // Log all inputs received by the action
+        core.info('=== DEBUGGING INPUT VALUES ===');
+        core.info(`days-inactive (raw): "${core.getInput("days-inactive")}"`);
+        core.info(`days-inactive (parsed): ${daysInactive}`);
+        core.info(`check-in-message: "${checkInMessage}"`);
+        core.info(`comment-message: "${commentMessage}"`);
+        core.info(`bot-username: "${botUsername}"`);
+        core.info(`ignore-label: "${ignoreLabel}"`);
+        core.info('=== END DEBUGGING INPUT VALUES ===');
         // Set up Octokit
         const octokit = new rest_1.Octokit({ auth: token });
         const { owner, repo } = github.context.repo;
@@ -69,6 +79,8 @@ async function run() {
                 issue_number: item.number,
                 per_page: 100,
             });
+            // Log all comment authors for debugging
+            core.info(`Issue/PR #${item.number} comment authors: ${comments.map(c => { var _a; return (_a = c.user) === null || _a === void 0 ? void 0 : _a.login; }).join(", ")}`);
             // Find last user activity (most recent non-bot comment or issue creation)
             const userComments = comments.filter((c) => { var _a; return ((_a = c.user) === null || _a === void 0 ? void 0 : _a.login) !== botUsername; });
             let lastUserActivity = userComments.length > 0
@@ -83,15 +95,53 @@ async function run() {
             const daysSinceLastUser = (now.getTime() - lastUserActivity.getTime()) / (1000 * 60 * 60 * 24);
             // Check if a comment should be posted
             const shouldComment = daysSinceLastUser >= daysInactive &&
-                (lastBotActivity === null || lastBotActivity < lastUserActivity);
+                (lastBotActivity === null ||
+                    (now.getTime() - lastBotActivity.getTime()) / (1000 * 60 * 60 * 24) >= daysInactive);
             if (shouldComment) {
+                // Start with the comment message template
+                let finalMessage = commentMessage;
+                // Log the initial state
+                core.info(`Initial message: "${finalMessage}"`);
+                // Super-simple replacement: Try different formats of the template variables
+                const checkInVars = ["{{ check-in-message }}", "{{check-in-message}}", "{{ check-in-message}}", "{{check-in-message }}"];
+                const daysInactiveVars = ["{{ days-inactive }}", "{{days-inactive}}", "{{ days-inactive}}", "{{days-inactive }}"];
+                // Try all possible formats for check-in-message
+                let replaced = false;
+                for (const checkInVar of checkInVars) {
+                    if (finalMessage.includes(checkInVar)) {
+                        finalMessage = finalMessage.replace(checkInVar, checkInMessage);
+                        core.info(`Replaced "${checkInVar}" with check-in message`);
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) {
+                    core.info("Could not find check-in-message template variable to replace");
+                }
+                // Try all possible formats for days-inactive
+                replaced = false;
+                for (const daysInactiveVar of daysInactiveVars) {
+                    if (finalMessage.includes(daysInactiveVar)) {
+                        finalMessage = finalMessage.replace(daysInactiveVar, daysInactive.toString());
+                        core.info(`Replaced "${daysInactiveVar}" with days inactive value: ${daysInactive}`);
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) {
+                    core.info("Could not find days-inactive template variable to replace");
+                }
+                core.info(`Final message after replacements: "${finalMessage}"`);
                 // Post the comment
                 await octokit.issues.createComment({
                     owner,
                     repo,
                     issue_number: item.number,
-                    body: commentMessage,
+                    body: finalMessage,
                 });
+            }
+            else {
+                core.info(`Skipping comment on issue/PR #${item.number}: daysSinceLastUser=${daysSinceLastUser.toFixed(2)}, lastBotActivity=${lastBotActivity ? lastBotActivity.toISOString() : 'null'}`);
             }
         }
     }
