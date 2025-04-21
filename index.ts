@@ -49,11 +49,12 @@ async function run() {
       // Calculate days since last user activity
       const daysSinceLastUser = (now.getTime() - lastUserActivity.getTime()) / (1000 * 60 * 60 * 24);
 
-      // Check if a comment should be posted
-      const shouldComment =
+      // Check if a comment should be posted:
+      // 1. User activity is older than the inactive threshold
+      // 2. Bot hasn't commented yet OR the last user activity is more recent than last bot activity
+      const shouldComment = 
         daysSinceLastUser >= daysInactive &&
-        (lastBotActivity === null || 
-         (now.getTime() - lastBotActivity.getTime()) / (1000 * 60 * 60 * 24) >= daysInactive);
+        (lastBotActivity === null || lastUserActivity > lastBotActivity);
 
       if (shouldComment) {
         // Start with the comment message template
