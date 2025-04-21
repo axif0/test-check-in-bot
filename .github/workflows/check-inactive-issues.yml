@@ -1,0 +1,28 @@
+name: Check Inactive Issues
+on:
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    - cron: '0 0 * * *' # Optional: Runs daily
+jobs:
+  check-in:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Check in Bot
+        uses: axif0/test-check-in-bot@master
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-inactive: '0.01' # 14.4 minutes
+          check-in-message: |
+            Hello to the maintainers and watchers!
+            
+            There have been no updates here for the last two weeks. There might be need for a check in :)
+            
+            Thanks and hope all are well! ❤️
+          comment-message: |
+            <!-- AUTO-GENERATED CHECK-IN -->
+            ${{ inputs.check-in-message }}
+            
+            Additionally, this issue has been inactive for {{ days-inactive }} days.
+          bot-username: 'github-actions[bot]'
+          ignore-label: 'ignore-checkin' 

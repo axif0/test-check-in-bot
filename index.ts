@@ -59,10 +59,12 @@ async function run() {
          (now.getTime() - lastBotActivity.getTime()) / (1000 * 60 * 60 * 24) >= daysInactive);
 
       if (shouldComment) {
-        // Use the provided messages directly without trying to do template replacement
-        const finalMessage = commentMessage;
+        // Process template variables in comment message
+        let finalMessage = commentMessage
+          .replace(/\{\{\s*days-inactive\s*\}\}/g, daysInactive.toString())
+          .replace(/\$\{\{\s*inputs\.check-in-message\s*\}\}/g, checkInMessage);
         
-        core.info(`Using comment message directly: ${finalMessage}`);
+        core.info(`Processed message with substitutions: ${finalMessage}`);
         
         // Post the comment
         await octokit.issues.createComment({
