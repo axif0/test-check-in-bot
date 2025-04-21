@@ -9,6 +9,9 @@ inputs:
     required: true
     default: '14'
  
+  bot-username:
+    description: 'Username of the bot'
+    required: true
   ignore-label:
     description: 'Label to ignore issues with'
     required: false
