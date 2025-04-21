@@ -6,11 +6,21 @@ async function run() {
   try {
     // Get inputs
     const token = core.getInput("repo-token");
-    const daysInactive = parseInt(core.getInput("days-inactive"), 10);
+    const daysInactive = parseFloat(core.getInput("days-inactive"));
     const checkInMessage = core.getInput("check-in-message");
     const commentMessage = core.getInput("comment-message");
     const botUsername = core.getInput("bot-username");
     const ignoreLabel = core.getInput("ignore-label") || "ignore-checkin";
+
+    // Log all inputs received by the action
+    core.info('=== DEBUGGING INPUT VALUES ===');
+    core.info(`days-inactive (raw): "${core.getInput("days-inactive")}"`);
+    core.info(`days-inactive (parsed): ${daysInactive}`);
+    core.info(`check-in-message: "${checkInMessage}"`);
+    core.info(`comment-message: "${commentMessage}"`);
+    core.info(`bot-username: "${botUsername}"`);
+    core.info(`ignore-label: "${ignoreLabel}"`);
+    core.info('=== END DEBUGGING INPUT VALUES ===');
 
     // Set up Octokit
     const octokit = new Octokit({ auth: token });
@@ -59,53 +69,45 @@ async function run() {
          (now.getTime() - lastBotActivity.getTime()) / (1000 * 60 * 60 * 24) >= daysInactive);
 
       if (shouldComment) {
-        // Debug logging
-        core.info(`Original comment message: "${commentMessage}"`);
-        core.info(`Check-in message value: "${checkInMessage}"`);
-        core.info(`Days inactive value: ${daysInactive}`);
-        
-        // First, clean up the input by removing any artifacts from workflow variable interpolation
+        // Start with the comment message template
         let finalMessage = commentMessage;
         
-        // Simple direct string replacement - sometimes more reliable than regex
-        const checkInVar = "{{ check-in-message }}";
-        const daysInactiveVar = "{{ days-inactive }}";
+        // Log the initial state
+        core.info(`Initial message: "${finalMessage}"`);
         
-        if (finalMessage.includes(checkInVar)) {
-          core.info(`Found check-in-message template variable using direct string match`);
-          finalMessage = finalMessage.split(checkInVar).join(checkInMessage);
-        } else {
-          core.info(`No exact match for "${checkInVar}" found`);
-        }
+        // Super-simple replacement: Try different formats of the template variables
+        const checkInVars = ["{{ check-in-message }}", "{{check-in-message}}", "{{ check-in-message}}", "{{check-in-message }}"];
+        const daysInactiveVars = ["{{ days-inactive }}", "{{days-inactive}}", "{{ days-inactive}}", "{{days-inactive }}"];
         
-        if (finalMessage.includes(daysInactiveVar)) {
-          core.info(`Found days-inactive template variable using direct string match`);
-          finalMessage = finalMessage.split(daysInactiveVar).join(daysInactive.toString());
-        } else {
-          core.info(`No exact match for "${daysInactiveVar}" found`);
-        }
-        
-        // Dump the comment message character by character for debugging
-        core.info(`Comment message character codes: ${[...commentMessage].map(c => c.charCodeAt(0)).join(',')}`);
-        
-        // Check for any remaining template variables
-        const remainingTemplates = finalMessage.match(/\{\{.*?\}\}/g);
-        if (remainingTemplates) {
-          core.info(`WARNING: Found unprocessed template variables: ${remainingTemplates.join(', ')}`);
-          
-          // As a last resort, try to handle any other template variables
-          for (const template of remainingTemplates) {
-            core.info(`Trying to process: ${template}`);
-            
-            if (template.includes('check-in-message')) {
-              finalMessage = finalMessage.replace(template, checkInMessage);
-            } else if (template.includes('days-inactive')) {
-              finalMessage = finalMessage.replace(template, daysInactive.toString());
-            }
+        // Try all possible formats for check-in-message
+        let replaced = false;
+        for (const checkInVar of checkInVars) {
+          if (finalMessage.includes(checkInVar)) {
+            finalMessage = finalMessage.replace(checkInVar, checkInMessage);
+            core.info(`Replaced "${checkInVar}" with check-in message`);
+            replaced = true;
+            break;
           }
         }
+        if (!replaced) {
+          core.info("Could not find check-in-message template variable to replace");
+        }
         
-        core.info(`Final processed comment message: "${finalMessage}"`);
+        // Try all possible formats for days-inactive
+        replaced = false;
+        for (const daysInactiveVar of daysInactiveVars) {
+          if (finalMessage.includes(daysInactiveVar)) {
+            finalMessage = finalMessage.replace(daysInactiveVar, daysInactive.toString());
+            core.info(`Replaced "${daysInactiveVar}" with days inactive value: ${daysInactive}`);
+            replaced = true;
+            break;
+          }
+        }
+        if (!replaced) {
+          core.info("Could not find days-inactive template variable to replace");
+        }
+        
+        core.info(`Final message after replacements: "${finalMessage}"`);
         
         // Post the comment
         await octokit.issues.createComment({
