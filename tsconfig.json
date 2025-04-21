@@ -1,13 +1,11 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es2018",
-    "outDir": "dist",
+    "target": "es6",
+    "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "lib": ["es2018", "dom"],
-    "types": ["node"]
+    "strict": true
   },
   "include": ["index.ts"]
 }
