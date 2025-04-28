@@ -19,6 +19,10 @@ inputs:
     description: 'Label to ignore issues with'
     required: false
     default: 'ignore-checkin'
+  stop-comment:
+    description: 'Comment phrase to stop further bot comments'
+    required: false
+    default: 'checkin stop'
   check-in-message:
     description: 'The check in message for issues and PRs (supports markdown)'
     required: true
