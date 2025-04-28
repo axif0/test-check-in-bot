@@ -11,6 +11,7 @@ async function run() {
     const commentMessage = core.getInput("comment-message");
     const botUsername = core.getInput("bot-username");
     const ignoreLabel = core.getInput("ignore-label") || "ignore-checkin";
+    const stopComment = core.getInput("stop-comment") || "checkin stop";
 
     // Set up Octokit
     const octokit = new Octokit({ auth: token });
@@ -33,6 +34,22 @@ async function run() {
         issue_number: item.number,
         per_page: 100,
       });
+
+      // Check for a "stop-comment" (e.g., "checkin stop") from a non-bot user
+      const hasStopComment = comments.some(
+        (c) => c.user?.login !== botUsername && c.body?.toLowerCase().includes(stopComment.toLowerCase())
+      );
+
+      // If a stop comment exists, apply the ignore-label and skip this issue/PR
+      if (hasStopComment) {
+        await octokit.issues.addLabels({
+          owner,
+          repo,
+          issue_number: item.number,
+          labels: [ignoreLabel],
+        });
+        continue; // Skip to the next issue/PR
+      }
 
       // Find last user activity (most recent non-bot comment or issue creation)
       const userComments = comments.filter((c) => c.user?.login !== botUsername);
@@ -67,7 +84,6 @@ async function run() {
         // Try all possible formats for check-in-message with global replacement
         for (const checkInVar of checkInVars) {
           if (finalMessage.includes(checkInVar)) {
-            // Use split/join for global replacement
             finalMessage = finalMessage.split(checkInVar).join(checkInMessage);
             break;
           }
@@ -76,7 +92,6 @@ async function run() {
         // Try all possible formats for days-inactive with global replacement
         for (const daysInactiveVar of daysInactiveVars) {
           if (finalMessage.includes(daysInactiveVar)) {
-            // Use split/join for global replacement
             finalMessage = finalMessage.split(daysInactiveVar).join(daysInactive.toString());
             break;
           }
@@ -101,4 +116,3 @@ async function run() {
 }
 
 run();
- 
