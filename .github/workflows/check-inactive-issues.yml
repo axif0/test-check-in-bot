@@ -13,8 +13,6 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           days-inactive: '0.01' # 14.4 minutes
-          debug-mode: 'true'
-          early-exit: 'true'  # Just for testing log output
           check-in-message: |
             Hello to the maintainers and watchers!
             

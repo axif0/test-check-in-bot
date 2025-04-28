@@ -32,14 +32,6 @@ inputs:
     description: 'Comment phrase to stop further bot comments and apply ignore-label'
     required: false
     default: 'checkin stop'
-  debug-mode:
-    description: 'Enable debug mode with additional logging'
-    required: false
-    default: 'false'
-  early-exit:
-    description: 'Exit early for testing log output'
-    required: false
-    default: 'false'
 runs:
   using: 'node20'
   main: 'dist/index.js'
