@@ -63,16 +63,34 @@ function run() {
             const botUsername = core.getInput("bot-username");
             const ignoreLabel = core.getInput("ignore-label") || "ignore-checkin";
             const stopComment = core.getInput("stop-comment") || "checkin stop";
+            const skipPRs = core.getInput("skip-pr").toLowerCase() !== "false";
+            const autoAddLabel = core.getInput("auto-add-label").toLowerCase() !== "false";
+            // Log configuration
+            core.info(`Configuration:`);
+            core.info(`- Days inactive threshold: ${daysInactive}`);
+            core.info(`- Bot username: ${botUsername}`);
+            core.info(`- Ignore label: ${ignoreLabel}`);
+            core.info(`- Stop comment: ${stopComment}`);
+            core.info(`- Skip PRs: ${skipPRs}`);
+            core.info(`- Auto add label: ${autoAddLabel}`);
             // Set up Octokit
             const octokit = new rest_1.Octokit({ auth: token });
             const { owner, repo } = github.context.repo;
             // Search for open issues and PRs without the ignore label
-            const query = `repo:${owner}/${repo} is:open -label:${ignoreLabel}`;
+            let query = `repo:${owner}/${repo} is:open -label:${ignoreLabel}`;
+            if (skipPRs) {
+                query += " is:issue"; // Only match issues, not PRs
+                core.info(`Only processing issues (skipping PRs)`);
+            }
+            else {
+                core.info(`Processing both issues and PRs`);
+            }
+            core.info(`Search query: ${query}`);
             const searchResponse = yield octokit.paginate(octokit.search.issuesAndPullRequests, {
                 q: query,
                 per_page: 100,
             });
-            core.info(`Found ${searchResponse.length} issues/PRs to process.`);
+            core.info(`Found ${searchResponse.length} items to process.`);
             const now = new Date();
             for (const item of searchResponse) {
                 core.info(`Processing issue/PR #${item.number}`);
@@ -87,16 +105,21 @@ function run() {
                 core.info(`Found ${comments.length} total comments on issue/PR #${item.number}`);
                 // Check for a "stop-comment" (e.g., "checkin stop") from a non-bot user
                 const hasStopComment = comments.some((c) => { var _a, _b; return ((_a = c.user) === null || _a === void 0 ? void 0 : _a.login) !== botUsername && ((_b = c.body) === null || _b === void 0 ? void 0 : _b.toLowerCase().includes(stopComment.toLowerCase())); });
-                // If a stop comment exists, apply the ignore-label and skip this issue/PR
+                // If a stop comment exists, apply the ignore-label (if autoAddLabel is true) and skip this issue/PR
                 if (hasStopComment) {
-                    core.info(`📛 SKIPPING: Found stop-comment '${stopComment}' in issue/PR #${item.number}, applying label '${ignoreLabel}' and skipping.`);
-                    yield octokit.issues.addLabels({
-                        owner,
-                        repo,
-                        issue_number: item.number,
-                        labels: [ignoreLabel],
-                    });
-                    core.info(`Label '${ignoreLabel}' applied to issue/PR #${item.number}`);
+                    if (autoAddLabel) {
+                        core.info(`📛 SKIPPING: Found stop-comment '${stopComment}' in issue/PR #${item.number}, applying label '${ignoreLabel}' and skipping.`);
+                        yield octokit.issues.addLabels({
+                            owner,
+                            repo,
+                            issue_number: item.number,
+                            labels: [ignoreLabel],
+                        });
+                        core.info(`Label '${ignoreLabel}' applied to issue/PR #${item.number}`);
+                    }
+                    else {
+                        core.info(`📛 SKIPPING: Found stop-comment '${stopComment}' in issue/PR #${item.number}. Not applying label due to auto-add-label=false.`);
+                    }
                     continue; // Skip to the next issue/PR
                 }
                 // Find last user activity (most recent non-bot comment or issue creation)
