@@ -27,9 +27,15 @@ async function run() {
     core.info(`Found ${searchResponse.length} issues/PRs to process.`);
 
     const now = new Date();
+    let processedCount = 0;
+    let skippedCount = 0;
+    let commentedCount = 0;
+
+    core.info(`=== Starting processing of ${searchResponse.length} issues/PRs ===`);
 
     for (const item of searchResponse) {
-      core.info(`Processing issue/PR #${item.number}`);
+      processedCount++;
+      core.info(`\n[${processedCount}/${searchResponse.length}] Processing issue/PR #${item.number}: ${item.title || 'No title'}`);
 
       // Fetch all comments for the issue or PR
       const comments = await octokit.paginate(octokit.issues.listComments, {
@@ -38,6 +44,8 @@ async function run() {
         issue_number: item.number,
         per_page: 100,
       });
+      
+      core.info(`  Found ${comments.length} comments for issue/PR #${item.number}`);
 
       // Check for a "stop-comment" (e.g., "checkin stop") from a non-bot user
       const hasStopComment = comments.some(
@@ -46,7 +54,8 @@ async function run() {
 
       // If a stop comment exists, apply the ignore-label and skip this issue/PR
       if (hasStopComment) {
-        core.info(`Found stop-comment '${stopComment}' in issue/PR #${item.number}, applying label '${ignoreLabel}' and skipping.`);
+        skippedCount++;
+        core.info(`  SKIPPING: Found stop-comment '${stopComment}' in issue/PR #${item.number}, applying label '${ignoreLabel}' and skipping.`);
         await octokit.issues.addLabels({
           owner,
           repo,
@@ -71,6 +80,9 @@ async function run() {
       // Calculate days since last user activity
       const daysSinceLastUser = (now.getTime() - lastUserActivity.getTime()) / (1000 * 60 * 60 * 24);
 
+      core.info(`  Last user activity: ${lastUserActivity.toISOString()} (${daysSinceLastUser.toFixed(1)} days ago)`);
+      core.info(`  Last bot activity: ${lastBotActivity ? lastBotActivity.toISOString() : 'none'}`);
+
       // Check if a comment should be posted:
       // 1. User activity is older than the inactive threshold
       // 2. Bot hasn't commented yet OR the last user activity is more recent than last bot activity
@@ -79,7 +91,14 @@ async function run() {
         (lastBotActivity === null || lastUserActivity > lastBotActivity);
 
       if (shouldComment) {
-        core.info(`Issue/PR #${item.number} is inactive for ${daysSinceLastUser.toFixed(1)} days, posting comment.`);
+        commentedCount++;
+        core.info(`  COMMENTING: Issue/PR #${item.number} is inactive for ${daysSinceLastUser.toFixed(1)} days (threshold: ${daysInactive} days).`);
+        if (lastBotActivity === null) {
+          core.info(`    Reason: No previous bot comment found.`);
+        } else if (lastUserActivity > lastBotActivity) {
+          core.info(`    Reason: Last user activity (${lastUserActivity.toISOString()}) is more recent than last bot comment (${lastBotActivity.toISOString()}).`);
+        }
+        
         // Start with the comment message template
         let finalMessage = commentMessage;
         
@@ -110,10 +129,22 @@ async function run() {
           issue_number: item.number,
           body: finalMessage,
         });
+        core.info(`    Comment posted successfully.`);
       } else {
-        core.info(`Issue/PR #${item.number} does not meet criteria for commenting (inactive for ${daysSinceLastUser.toFixed(1)} days).`);
+        core.info(`  SKIPPING: Issue/PR #${item.number} does not meet criteria for commenting.`);
+        if (daysSinceLastUser < daysInactive) {
+          core.info(`    Reason: Not inactive long enough. Last activity was ${daysSinceLastUser.toFixed(1)} days ago (threshold: ${daysInactive} days).`);
+        } else if (lastBotActivity !== null && lastUserActivity <= lastBotActivity) {
+          core.info(`    Reason: Latest bot comment (${lastBotActivity.toISOString()}) is more recent than latest user activity (${lastUserActivity.toISOString()}).`);
+        }
+        skippedCount++;
       }
     }
+
+    core.info(`\n=== Summary ===`);
+    core.info(`Total issues/PRs processed: ${processedCount}`);
+    core.info(`Issues/PRs commented on: ${commentedCount}`);
+    core.info(`Issues/PRs skipped: ${skippedCount}`);
   } catch (error) {
     if (error instanceof Error) {
       core.setFailed(error.message);
