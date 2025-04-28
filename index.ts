@@ -24,9 +24,13 @@ async function run() {
       per_page: 100,
     });
 
+    core.info(`Found ${searchResponse.length} issues/PRs to process.`);
+
     const now = new Date();
 
     for (const item of searchResponse) {
+      core.info(`Processing issue/PR #${item.number}`);
+
       // Fetch all comments for the issue or PR
       const comments = await octokit.paginate(octokit.issues.listComments, {
         owner,
@@ -42,6 +46,7 @@ async function run() {
 
       // If a stop comment exists, apply the ignore-label and skip this issue/PR
       if (hasStopComment) {
+        core.info(`Found stop-comment '${stopComment}' in issue/PR #${item.number}, applying label '${ignoreLabel}' and skipping.`);
         await octokit.issues.addLabels({
           owner,
           repo,
@@ -74,6 +79,7 @@ async function run() {
         (lastBotActivity === null || lastUserActivity > lastBotActivity);
 
       if (shouldComment) {
+        core.info(`Issue/PR #${item.number} is inactive for ${daysSinceLastUser.toFixed(1)} days, posting comment.`);
         // Start with the comment message template
         let finalMessage = commentMessage;
         
@@ -104,6 +110,8 @@ async function run() {
           issue_number: item.number,
           body: finalMessage,
         });
+      } else {
+        core.info(`Issue/PR #${item.number} does not meet criteria for commenting (inactive for ${daysSinceLastUser.toFixed(1)} days).`);
       }
     }
   } catch (error) {

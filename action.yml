@@ -11,7 +11,7 @@ inputs:
   comment-message:
     description: 'Message to post on inactive issues'
     required: true
-    default: 'This issue has been inactive for {{ days-inactive }} days. Please check in.'
+    default: 'This issue has been inactive for {{ days-inactive }} days. Please check in. To stop further reminders, comment "{{ stop-comment }}".'
   bot-username:
     description: 'Username of the bot'
     required: true
@@ -19,10 +19,6 @@ inputs:
     description: 'Label to ignore issues with'
     required: false
     default: 'ignore-checkin'
-  stop-comment:
-    description: 'Comment phrase to stop further bot comments'
-    required: false
-    default: 'checkin stop'
   check-in-message:
     description: 'The check in message for issues and PRs (supports markdown)'
     required: true
@@ -32,6 +28,10 @@ inputs:
       There have been no updates here for the last two weeks. There might be need for a check in :)
 
       Thanks and hope all are well! ❤️
+  stop-comment:
+    description: 'Comment phrase to stop further bot comments and apply ignore-label'
+    required: false
+    default: 'checkin stop'
 runs:
   using: 'node20'
   main: 'dist/index.js'
