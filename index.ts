@@ -12,19 +12,38 @@ async function run() {
     const botUsername = core.getInput("bot-username");
     const ignoreLabel = core.getInput("ignore-label") || "ignore-checkin";
     const stopComment = core.getInput("stop-comment") || "checkin stop";
+    const skipPRs = core.getInput("skip-pr").toLowerCase() !== "false";
+    const autoAddLabel = core.getInput("auto-add-label").toLowerCase() !== "false";
+
+    // Log configuration
+    core.info(`Configuration:`);
+    core.info(`- Days inactive threshold: ${daysInactive}`);
+    core.info(`- Bot username: ${botUsername}`);
+    core.info(`- Ignore label: ${ignoreLabel}`);
+    core.info(`- Stop comment: ${stopComment}`);
+    core.info(`- Skip PRs: ${skipPRs}`);
+    core.info(`- Auto add label: ${autoAddLabel}`);
 
     // Set up Octokit
     const octokit = new Octokit({ auth: token });
     const { owner, repo } = github.context.repo;
 
     // Search for open issues and PRs without the ignore label
-    const query = `repo:${owner}/${repo} is:open -label:${ignoreLabel}`;
+    let query = `repo:${owner}/${repo} is:open -label:${ignoreLabel}`;
+    if (skipPRs) {
+      query += " is:issue"; // Only match issues, not PRs
+      core.info(`Only processing issues (skipping PRs)`);
+    } else {
+      core.info(`Processing both issues and PRs`);
+    }
+    
+    core.info(`Search query: ${query}`);
     const searchResponse = await octokit.paginate(octokit.search.issuesAndPullRequests, {
       q: query,
       per_page: 100,
     });
 
-    core.info(`Found ${searchResponse.length} issues/PRs to process.`);
+    core.info(`Found ${searchResponse.length} items to process.`);
 
     const now = new Date();
 
@@ -47,16 +66,20 @@ async function run() {
         (c) => c.user?.login !== botUsername && c.body?.toLowerCase().includes(stopComment.toLowerCase())
       );
 
-      // If a stop comment exists, apply the ignore-label and skip this issue/PR
+      // If a stop comment exists, apply the ignore-label (if autoAddLabel is true) and skip this issue/PR
       if (hasStopComment) {
-        core.info(`📛 SKIPPING: Found stop-comment '${stopComment}' in issue/PR #${item.number}, applying label '${ignoreLabel}' and skipping.`);
-        await octokit.issues.addLabels({
-          owner,
-          repo,
-          issue_number: item.number,
-          labels: [ignoreLabel],
-        });
-        core.info(`Label '${ignoreLabel}' applied to issue/PR #${item.number}`);
+        if (autoAddLabel) {
+          core.info(`📛 SKIPPING: Found stop-comment '${stopComment}' in issue/PR #${item.number}, applying label '${ignoreLabel}' and skipping.`);
+          await octokit.issues.addLabels({
+            owner,
+            repo,
+            issue_number: item.number,
+            labels: [ignoreLabel],
+          });
+          core.info(`Label '${ignoreLabel}' applied to issue/PR #${item.number}`);
+        } else {
+          core.info(`📛 SKIPPING: Found stop-comment '${stopComment}' in issue/PR #${item.number}. Not applying label due to auto-add-label=false.`);
+        }
         continue; // Skip to the next issue/PR
       }
 

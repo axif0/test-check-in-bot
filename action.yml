@@ -32,6 +32,14 @@ inputs:
     description: 'Comment phrase to stop further bot comments and apply ignore-label'
     required: false
     default: 'checkin stop'
+  skip-pr:
+    description: 'Skip pull requests and only process issues'
+    required: false
+    default: 'true'
+  auto-add-label:
+    description: 'Automatically add ignore label when stop comment is found'
+    required: false
+    default: 'true'
 runs:
   using: 'node20'
   main: 'dist/index.js'
