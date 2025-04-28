@@ -2,14 +2,36 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { Octokit } from "@octokit/rest";
 
+// Add at the very top of the file, before any other code
+console.log("Direct console log: Script is starting");
+
 async function run() {
+  console.log("Direct console log: Inside run function");
+  
+  // Set debugging level explicitly
+  core.setSecret(""); // This is a trick to force the logging system to initialize
+  core.debug("Debug message test");
+  
   try {
     // Add initial debug message to confirm code execution
     core.info("🔍 CHECK-IN BOT STARTING");
     core.info("====================");
     
+    // Get inputs - EARLY EXIT TEST
+    const earlyExit = core.getInput("early-exit") === "true";
+    if (earlyExit) {
+      core.warning("Early exit requested - this is just for debugging!");
+      for (let i = 0; i < 5; i++) {
+        core.info(`Debug test message ${i}`);
+      }
+      return;
+    }
+    
     // Get inputs
     const token = core.getInput("repo-token");
+    if (!token) {
+      core.error("No repo token provided!");
+    }
     const daysInactive = parseFloat(core.getInput("days-inactive"));
     const checkInMessage = core.getInput("check-in-message");
     const commentMessage = core.getInput("comment-message");
@@ -32,6 +54,16 @@ async function run() {
     const { owner, repo } = github.context.repo;
     core.info(`Repository: ${owner}/${repo}`);
 
+    // After Octokit initialization
+    core.info("Octokit initialized, about to search for issues");
+    console.log("Console log: About to search for issues");
+    
+    // Force output with setOutput even though it's deprecated
+    core.setOutput("status", "initialized");
+    
+    // Add a delay to ensure logs flush
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     // Search for open issues and PRs without the ignore label
     core.info("Searching for open issues and PRs...");
     const query = `repo:${owner}/${repo} is:open -label:${ignoreLabel}`;
@@ -187,7 +219,18 @@ async function run() {
       core.error("An unknown error occurred.");
       core.setFailed("An unknown error occurred.");
     }
+    
+    // Add final console log
+    console.log("Direct console log: Exiting with error");
   }
+  
+  // Add final console log outside try/catch
+  console.log("Direct console log: Function complete");
 }
 
-run();
+// Call run and handle any errors at the top level
+console.log("Direct console log: About to call run()");
+run().catch(error => {
+  console.error("Top level error:", error);
+  core.setFailed(`Unhandled error: ${error.message || "Unknown error"}`);
+});
